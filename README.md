@@ -38,6 +38,7 @@ app/                  화면(라우트). 폴더 이름이 곧 주소
   page.tsx            /                  홈
   schedules/          /schedules         산행 일정 목록 (SFR-001)
     [id]/             /schedules/1       산행 일정 상세 (SFR-002)
+      seats/          /schedules/1/seats 좌석 선택 (SFR-003, 상세 화면의 "좌석 선택" 버튼이 여기로 연결)
   mypage/             /mypage            예약 내역·QR·통계 그래프 (SFR-005·006)
   login/              /login             소셜 로그인 (SFR-007)
   api/                /api/...           서버 API (필요할 때 각자 추가)
