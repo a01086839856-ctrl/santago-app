@@ -10,7 +10,7 @@
 
 - Next.js 16 (App Router), React 19, TypeScript
 - Tailwind CSS 4
-- DB: PostgreSQL (AWS RDS, DAR-001에서 연결 예정)
+- DB: PostgreSQL + Prisma 7. 개발 중에는 Neon 무료 DB를 둘이 같이 쓰고, 시연 때 AWS RDS로 옮긴다(ECR-001)
 - 배포: AWS EC2 (Nginx), 도메인과 HTTPS 적용 예정 (ECR-001)
 
 ## 처음 시작하기
@@ -26,10 +26,30 @@
    ```bash
    cp .env.example .env.local
    ```
-4. 개발 서버를 켜고 브라우저에서 http://localhost:3000 을 연다.
+4. `.env.local`의 `DATABASE_URL`에 팀 DB 주소를 넣는다. 주소는 윤태현에게 카톡으로 받는다.
+5. 개발 서버를 켜고 브라우저에서 http://localhost:3000 을 연다.
    ```bash
    npm run dev
    ```
+
+## DB 사용법
+
+- 설계는 `prisma/schema.prisma` 한 파일에 있다. 테이블 6개: 회원(users), 산행 일정(schedules), 탑승지(boarding_points), 예약(reservations), 좌석(reservation_seats), 결제(payments)
+- 코드에서 DB를 쓸 때는 `import { prisma } from "@/lib/db";` 후 `await prisma.schedule.findMany()`처럼 쓴다. 서버 코드(페이지 컴포넌트, API)에서만 쓴다.
+- `npm install`을 하면 DB용 코드가 `generated/` 폴더에 자동으로 만들어진다. 이 폴더는 깃에 올리지 않는다.
+- 남은 좌석은 저장하지 않는다. `전체 좌석(totalSeats) - 좌석 줄 수`로 계산한다.
+- 목록 화면에는 산행 날짜가 오늘 이후인 일정만 보여 준다. 지난 일정은 마이페이지 통계용이다.
+- 같은 일정의 같은 좌석 번호는 DB가 두 번 저장을 거부한다(오류 코드 P2002). 좌석 예약 코드에서 이 오류를 "이미 선택된 좌석"으로 안내한다.
+- 결제 대기(PENDING) 예약은 `expiresAt`(만든 시각 + 10분)이 지나면 다음 예약 때 지우고 좌석을 풀어 준다(SFR-003).
+
+| 명령 | 하는 일 | 누가 |
+|---|---|---|
+| `npm run db:push` | 설계 파일대로 DB 테이블을 만들거나 고친다 | 윤태현만 |
+| `npm run db:seed` | 산행 일정 11개와 탑승지를 처음부터 다시 넣는다(기존 일정·예약은 지워짐) | 윤태현만 |
+| `npm run db:demo` | 시연 계정에 지난 예약 6건 + 앞으로 갈 예약 1건을 넣는다(통계 그래프·예약 내역용) | 누구나 |
+| `npm run db:studio` | 브라우저에서 DB 내용을 표로 보고 고친다 | 누구나 |
+
+두 사람이 같은 DB를 쓰므로, 설계 파일을 바꾸거나 `db:push`·`db:seed`를 실행하기 전에는 꼭 서로 말한다.
 
 ## 폴더 구조
 
@@ -43,7 +63,8 @@ app/                  화면(라우트). 폴더 이름이 곧 주소
   login/              /login             소셜 로그인 (SFR-007)
   api/                /api/...           서버 API (필요할 때 각자 추가)
 components/           여러 화면에서 같이 쓰는 화면 조각
-lib/                  공용 함수, DB 연결, 임시 데이터(mock-data.ts)
+lib/                  공용 함수, DB 연결(db.ts), 임시 데이터(mock-data.ts)
+prisma/               DB 설계(schema.prisma), 초기 데이터(seed.ts), 시연 계정 예약(demo.ts)
 types/                팀 공용 데이터 모양(index.ts)
 ```
 
