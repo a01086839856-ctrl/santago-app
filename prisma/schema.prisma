@@ -1,0 +1,161 @@
+// 산타고 DB 설계 (DAR-001, 담당: 윤태현)
+// - 테이블 6개: 회원, 산행 일정, 탑승지, 예약, 좌석, 결제
+// - 바꾼 뒤에는 `npm run db:push`로 DB에 반영하고 팀원에게 알린다.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// 지역 코드 (types/index.ts의 REGIONS와 같은 값)
+enum Region {
+  CAPITAL // 수도권
+  GANGWON // 강원
+  CHUNGCHEONG // 충청
+  JEOLLA // 전라
+  GYEONGSANG // 경상
+  JEJU // 제주
+}
+
+// 난이도 코드 (types/index.ts의 DIFFICULTIES와 같은 값)
+enum Difficulty {
+  EASY // 쉬움
+  NORMAL // 보통
+  HARD // 어려움
+}
+
+// 로그인 제공자 (DEMO는 로그인 기능 완성 전 시연·테스트용 계정)
+enum AuthProvider {
+  KAKAO
+  GOOGLE
+  DEMO
+}
+
+// 예약 상태
+enum ReservationStatus {
+  PENDING // 결제 대기: 좌석을 10분 동안 잡아 둔 상태
+  CONFIRMED // 결제 완료로 확정
+  CANCELLED // 취소 (좌석 줄은 지워서 다시 예약 가능하게 함)
+}
+
+// 결제 상태
+enum PaymentStatus {
+  READY // 결제 시작 전
+  DONE // 결제 승인 완료
+  CANCELED // 결제 취소
+  FAILED // 결제 실패
+}
+
+// 회원 (SFR-007): 같은 제공자의 같은 회원번호는 한 번만 저장된다
+model User {
+  id           Int           @id @default(autoincrement())
+  provider     AuthProvider
+  providerId   String // 카카오·구글이 주는 회원 고유번호
+  name         String
+  email        String? // 카카오는 이메일을 안 줄 수도 있다
+  createdAt    DateTime      @default(now())
+  reservations Reservation[]
+
+  @@unique([provider, providerId])
+  @@map("users")
+}
+
+// 산행 일정 (SFR-001·002)
+model Schedule {
+  id             Int             @id @default(autoincrement())
+  title          String
+  mountain       String
+  region         Region
+  difficulty     Difficulty
+  hikeDate       DateTime        @db.Date
+  course         String
+  price          Int // 1인 요금(원)
+  totalSeats     Int // 버스 전체 좌석 수. 남은 좌석은 저장하지 않고 좌석 줄 수로 계산한다
+  destName       String // 산행지 이름 (지도 표시용, SFR-008)
+  destLat        Float
+  destLng        Float
+  routePath      Json? // 버스 운행 경로 좌표 (SFR-009). 저장 가능 여부는 길찾기 API 약관 확인 후 결정
+  aiGuide        String? // AI 산행 안내문 (SFR-011)
+  aiGuideAt      DateTime? // AI 안내문을 만든 시각
+  createdAt      DateTime        @default(now())
+  boardingPoints BoardingPoint[]
+  reservations   Reservation[]
+  seats          ReservationSeat[]
+
+  @@index([hikeDate])
+  @@map("schedules")
+}
+
+// 탑승지: 한 일정에 여러 곳
+model BoardingPoint {
+  id           Int           @id @default(autoincrement())
+  scheduleId   Int
+  schedule     Schedule      @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+  name         String
+  address      String
+  boardTime    String // 탑승 시각, "06:00" 형식
+  lat          Float
+  lng          Float
+  sortOrder    Int // 탑승 순서 (1, 2, 3...)
+  reservations Reservation[]
+
+  @@index([scheduleId])
+  @@map("boarding_points")
+}
+
+// 예약 (SFR-003·005)
+model Reservation {
+  id              Int               @id @default(autoincrement())
+  userId          Int
+  user            User              @relation(fields: [userId], references: [id])
+  scheduleId      Int
+  schedule        Schedule          @relation(fields: [scheduleId], references: [id])
+  boardingPointId Int
+  boardingPoint   BoardingPoint     @relation(fields: [boardingPointId], references: [id])
+  status          ReservationStatus @default(PENDING)
+  amount          Int // 결제할 금액(원) = 1인 요금 × 좌석 수
+  qrToken         String            @unique @default(uuid()) // QR 탑승권에 넣을 값 (SFR-005)
+  expiresAt       DateTime? // 결제 대기(PENDING) 좌석을 풀어 줄 시각 = 만든 시각 + 10분
+  createdAt       DateTime          @default(now())
+  seats           ReservationSeat[]
+  payment         Payment?
+
+  @@index([userId])
+  @@index([scheduleId, status])
+  @@map("reservations")
+}
+
+// 좌석: 예약된 좌석 하나가 한 줄
+// 같은 일정의 같은 좌석 번호는 DB가 두 번 저장을 거부한다 → 동시에 눌러도 한 명만 성공 (중복 예약 방지)
+model ReservationSeat {
+  id            Int         @id @default(autoincrement())
+  reservationId Int
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  scheduleId    Int
+  schedule      Schedule    @relation(fields: [scheduleId], references: [id])
+  seatNumber    Int
+
+  @@unique([scheduleId, seatNumber])
+  @@index([reservationId])
+  @@map("reservation_seats")
+}
+
+// 결제 (SFR-004): 예약 1건에 결제 1건
+model Payment {
+  id            Int           @id @default(autoincrement())
+  reservationId Int           @unique
+  reservation   Reservation   @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  orderId       String        @unique // 토스페이먼츠에 보내는 주문번호
+  paymentKey    String?       @unique // 토스페이먼츠가 승인 후 주는 결제키
+  amount        Int
+  method        String? // 카드, 간편결제 등
+  status        PaymentStatus @default(READY)
+  approvedAt    DateTime?
+  createdAt     DateTime      @default(now())
+
+  @@map("payments")
+}

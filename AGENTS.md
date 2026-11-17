@@ -17,3 +17,6 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - 화면 글자는 18px 이상(`text-base` 이상), 버튼과 링크 버튼은 높이 48px 이상(`min-h-12`)으로 만든다. 사용자는 40~60대 등산객이다.
 - 비밀 키는 `.env.local`에만 둔다. `NEXT_PUBLIC_`으로 시작하는 값은 브라우저 코드에 들어가므로 비밀 키를 넣지 않는다.
 - 사용자 개인정보(이름, 이메일, 전화번호)는 구글 애널리틱스 이벤트에 넣지 않는다.
+- DB는 Prisma 7 + AWS RDS for PostgreSQL이다. 설계는 `prisma/schema.prisma`, 연결은 `import { prisma } from "@/lib/db"`로만 한다. Prisma Client는 `@prisma/client`가 아니라 `generated/prisma/client`에 만들어진다. 새 Prisma Client가 필요하면 `lib/prisma-client.ts`의 `createPrismaClient()`를 쓴다(RDS SSL 처리가 들어 있음).
+- `prisma/schema.prisma`는 윤태현 담당이다. 바꿔야 하면 코드를 고치기 전에 팀원에게 먼저 말한다. 두 사람이 같은 DB를 쓰므로 `db:push`, `db:seed`는 함부로 실행하지 않는다.
+- 남은 좌석은 `totalSeats - 좌석 줄 수`로 계산한다. 목록 화면은 오늘 이후 일정만 보여 준다.

@@ -41,3 +41,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Prisma가 만드는 DB 코드 (npm install 때 자동 생성)
+/generated
