@@ -10,7 +10,7 @@
 
 - Next.js 16 (App Router), React 19, TypeScript
 - Tailwind CSS 4
-- DB: PostgreSQL + Prisma 7. 개발 중에는 Neon 무료 DB를 둘이 같이 쓰고, 시연 때 AWS RDS로 옮긴다(ECR-001)
+- DB: AWS RDS for PostgreSQL + Prisma 7. 개발할 때부터 둘이 같은 RDS를 쓴다
 - 배포: AWS EC2 (Nginx), 도메인과 HTTPS 적용 예정 (ECR-001)
 
 ## 처음 시작하기
@@ -36,6 +36,11 @@
 
 - 설계는 `prisma/schema.prisma` 한 파일에 있다. 테이블 6개: 회원(users), 산행 일정(schedules), 탑승지(boarding_points), 예약(reservations), 좌석(reservation_seats), 결제(payments)
 - 코드에서 DB를 쓸 때는 `import { prisma } from "@/lib/db";` 후 `await prisma.schedule.findMany()`처럼 쓴다. 서버 코드(페이지 컴포넌트, API)에서만 쓴다.
+- RDS 접속 규칙
+  - 주소 끝에 `?sslmode=require`를 꼭 붙인다. RDS(PostgreSQL 15 이상)는 암호화 접속만 받는다.
+  - 데모 단계라 `lib/prisma-client.ts`에서 "암호화는 하되 RDS 인증서 확인은 생략"한다. Node.js 기본 인증서 목록에 RDS 인증서가 없어서, 확인을 켜면 인증서 오류로 막힌다.
+  - RDS 보안 그룹은 등록된 IP만 접속을 허용한다. 집·학교 등 장소가 바뀌어 접속이 안 되면 윤태현에게 지금 IP를 알려 준다.
+  - DB 비밀번호는 영문과 숫자로만 만든다. `@`, `#`, `/` 같은 특수문자는 주소 안에서 다른 뜻으로 읽혀 접속이 깨진다.
 - `npm install`을 하면 DB용 코드가 `generated/` 폴더에 자동으로 만들어진다. 이 폴더는 깃에 올리지 않는다.
 - 남은 좌석은 저장하지 않는다. `전체 좌석(totalSeats) - 좌석 줄 수`로 계산한다.
 - 목록 화면에는 산행 날짜가 오늘 이후인 일정만 보여 준다. 지난 일정은 마이페이지 통계용이다.

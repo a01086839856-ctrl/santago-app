@@ -4,15 +4,12 @@
 // 로그인한 회원이 아직 없으면 "시연 계정"(DEMO)을 만들어 붙인다. 먼저 npm run db:seed를 실행해 둔다.
 import { randomUUID } from "node:crypto";
 import { config } from "dotenv";
-import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../generated/prisma/client";
+import { createPrismaClient } from "../lib/prisma-client";
 
 config({ path: ".env.local", quiet: true });
 config({ quiet: true });
 
-const prisma = new PrismaClient({
-  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
-});
+const prisma = createPrismaClient();
 
 // [일정 제목, 좌석 수, 예약 시각(산행 며칠 전)]
 const PLAN: Array<[string, number, number]> = [

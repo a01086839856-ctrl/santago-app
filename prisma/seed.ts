@@ -3,19 +3,13 @@
 // - 앞으로 열릴 일정 5개 + 지난 일정 6개(마이페이지 통계 그래프용)
 // - 좌표는 대략값이다. 지도 작업(SFR-008) 전에 카카오맵에서 확인해 고친다.
 import { config } from "dotenv";
-import { PrismaPg } from "@prisma/adapter-pg";
-import {
-  PrismaClient,
-  type Difficulty,
-  type Region,
-} from "../generated/prisma/client";
+import type { Difficulty, Region } from "../generated/prisma/client";
+import { createPrismaClient } from "../lib/prisma-client";
 
 config({ path: ".env.local", quiet: true });
 config({ quiet: true });
 
-const prisma = new PrismaClient({
-  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
-});
+const prisma = createPrismaClient();
 
 type SeedSchedule = {
   title: string;
