@@ -1,4 +1,5 @@
 
+import KakaoMap from "@/components/KakaoMap";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getSchedule } from "@/lib/schedules";
@@ -107,6 +108,10 @@ export default async function ScheduleDetailPage({
             <p className="mb-5 text-lg text-gray-600">
               원하는 탑승 장소와 출발 시간을 확인하세요.
             </p>
+
+            <div className="mb-6">
+              <KakaoMap points={schedule.boardingPoints} />
+            </div>
 
             <ul className="space-y-4">
               {schedule.boardingPoints.map((point) => (
