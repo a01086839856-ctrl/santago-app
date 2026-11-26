@@ -2,6 +2,7 @@
 // 실행: npm run db:demo            → 가장 최근에 카카오·구글로 로그인한 회원에게 붙인다
 //      npm run db:demo -- 3       → 회원 번호 3번에게 붙인다
 // 로그인한 회원이 아직 없으면 "시연 계정"(DEMO)을 만들어 붙인다. 먼저 npm run db:seed를 실행해 둔다.
+// 시연 예약은 항상 한 회원에게만 붙는다. 다른 회원에게 붙어 있던 시연 예약은 지우고 새로 붙인다.
 import { randomUUID } from "node:crypto";
 import { config } from "dotenv";
 import { createPrismaClient } from "../lib/prisma-client";
@@ -46,8 +47,15 @@ async function findTargetUser() {
 async function main() {
   const user = await findTargetUser();
 
-  // 다시 실행해도 같은 결과가 나오도록, 이 회원의 기존 예약을 먼저 지운다
-  await prisma.reservation.deleteMany({ where: { userId: user.id } });
+  // 시연 예약은 한 회원에게만 붙인다.
+  // 다시 실행해도 같은 결과가 나오도록, 누구에게 붙어 있든 기존 시연 예약(결제 번호 demo-)을 먼저 지운다.
+  // (예: 처음에 "시연 계정"에 붙였다가 카카오로 로그인한 뒤 다시 실행하면 내 계정으로 옮겨진다.
+  //  지난 산행은 좌석이 거의 차 있어서, 지우지 않으면 빈 좌석이 부족해 실패한다)
+  // 직접 예약한 진짜 예약(SFR-003)은 지우지 않는다.
+  const removed = await prisma.reservation.deleteMany({
+    where: { payment: { is: { orderId: { startsWith: "demo-" } } } },
+  });
+  if (removed.count > 0) console.log(`기존 시연 예약 ${removed.count}건을 지웠습니다.`);
 
   for (const [title, seatCount, daysBefore] of PLAN) {
     const schedule = await prisma.schedule.findFirst({
