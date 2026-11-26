@@ -20,3 +20,4 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - DB는 Prisma 7 + AWS RDS for PostgreSQL이다. 설계는 `prisma/schema.prisma`, 연결은 `import { prisma } from "@/lib/db"`로만 한다. Prisma Client는 `@prisma/client`가 아니라 `generated/prisma/client`에 만들어진다. 새 Prisma Client가 필요하면 `lib/prisma-client.ts`의 `createPrismaClient()`를 쓴다(RDS SSL 처리가 들어 있음).
 - `prisma/schema.prisma`는 윤태현 담당이다. 바꿔야 하면 코드를 고치기 전에 팀원에게 먼저 말한다. 두 사람이 같은 DB를 쓰므로 `db:push`, `db:seed`는 함부로 실행하지 않는다.
 - 남은 좌석은 `totalSeats - 좌석 줄 수`로 계산한다. 목록 화면은 오늘 이후 일정만 보여 준다.
+- 로그인 확인은 `import { getCurrentUser, getSession } from "@/lib/auth/session"`으로 한다. 회원 번호로 DB에 저장·조회하는 곳(예약, 결제, 마이페이지)은 `getCurrentUser()`, 화면 표시만 할 때는 `getSession()`을 쓴다. 로그인이 필요한 화면은 `redirect("/login?next=/현재주소")`로 보낸다. `lib/auth/`와 `app/api/auth/`는 윤태현 담당이다.
